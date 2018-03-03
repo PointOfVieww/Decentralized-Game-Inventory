@@ -7,19 +7,27 @@ pragma solidity ^0.4.18;
 //10 copper = 0.001 eth
 //1 copper = 0.0001 eth
 contract WoWInventory {
-    event BoughtGold(address,uint256);
+    event BoughtCoins(address,uint256);
     event SoldItem(address,string);
     event BoughtItem(address,string);
+
+    uint private oneGoldCoin = 1 ether;
+    uint private oneSilverCoin = oneGoldCoin / 100;
+    uint private oneCopperCoin = oneSilverCoin / 100;
 
     address private owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
-    address[] public coinHolders;
+    mapping (address=>bool) coinHolders;
     mapping (address=>bytes32) name;
 
     modifier isOwner() {
         require(msg.sender == owner);
+        _;
+    }
+    modifier isCoinHolder() {
+        require(coinHolders[msg.sender] == true);
         _;
     }
 
@@ -27,15 +35,24 @@ contract WoWInventory {
         owner = msg.sender;
     }
 
-    function buyGold() public payable {
-
-        //more than 0.0001 eth
-        //require(msg.value > 0.1 finney);
-
-        BoughtGold(msg.sender,msg.value);    
+    function buyCoins() public payable {
+        //only more than 0.0001 eth
+        require(msg.value > (1 ether / 10000));
+        if (msg.value > 1 ether) {
+            //buy gold
+        }
+        //if > 0.01 ether && < 1 ether
+        if (msg.value > (1 ether / 100) && msg.value < 1 ether) {
+            //buy silver
+        }
+        if (msg.value > (1 ether / 10000) && msg.value < (1 ether / 100)) {
+            //buy copper
+        }
+        coinHolders[msg.sender] = true;
+        BoughtCoins(msg.sender,msg.value);    
     }
 
-    function buyItem(string itemName) public {
+    function buyItem(string itemName) public isCoinHolder {
         
 
         BoughtItem(msg.sender,itemName);
@@ -45,6 +62,18 @@ contract WoWInventory {
         
 
         SoldItem(msg.sender,itemName);
+    }
+
+    function getGoldCoinsForAddress(address addr) public view returns(uint256) {
+        return gold[addr]; 
+    }
+
+    function getSilverCoinsForAddress(address addr) public view returns(uint256) {
+        return silver[addr]; 
+    }
+
+    function getCopperCoinsForAddress(address addr) public view returns(uint256) {
+        return copper[addr]; 
     }
 
     function withdraw() public isOwner {
