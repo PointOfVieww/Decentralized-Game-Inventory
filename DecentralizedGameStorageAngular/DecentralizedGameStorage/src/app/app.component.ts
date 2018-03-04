@@ -11,6 +11,7 @@ import { Image } from './models/image-model';
 })
 export class AppComponent implements OnInit {
   images:Image[]
+  itemsOfPerson:string[] = [];
 
   public accounts: any[] = [];
   public account: any;
@@ -46,11 +47,15 @@ export class AppComponent implements OnInit {
   buyItem(){
     
     var test = this.images.filter(x=>x.selected==true);
+
     console.log(test);
+    this.itemsOfPerson.push(test[0].url);
+    this.images.forEach(x=>x.selected=false);
   }
 
   public async buyGold(){
-    
+    //call contract
+
     // console.log(this.web3.fromWei(this.web3.eth.getBalance(this.account))); 
     
   }

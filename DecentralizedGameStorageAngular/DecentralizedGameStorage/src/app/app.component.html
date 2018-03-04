@@ -4,7 +4,7 @@
     Welcome to WoW inventory!
   </h1>
   <h2>Buy yourself some gold so you can upgrade your items.</h2>
-  <h3>Your balance : {{account_balance}}</h3>
+  <h3>Your balance in ethers : {{account_balance}}</h3>
   <h4>1 gold = 1 ether</h4>
   <h4>1 silver = 0.01 ether</h4>
   <h4>1 copper = 0.0001 ether</h4>
@@ -17,3 +17,9 @@
 </div>
 <button type="button" (click)="buyItem()" class="btn">Buy Item</button>
 
+<div class="inventory">
+  <div class="image-container-second" *ngFor="let item of itemsOfPerson">
+      <img [src]="item" class="rounded selectable" >
+  <!-- show items of person taken from IPFS or just recently bought -->
+  </div>
+</div>
