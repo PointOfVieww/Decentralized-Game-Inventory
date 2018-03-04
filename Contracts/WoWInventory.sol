@@ -10,13 +10,13 @@ contract WoWInventory {
     event BoughtCoins(address,uint256);
     event SoldItem(address,string);
     event BoughtItem(address,string);
-
+    event LegendaryItemBought(address,string);
     address private owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
     mapping (address=>bool) coinHolders;
-    mapping (address=>bytes32) name;
+    mapping (address=>string) itemsOwned;
 
     modifier isOwner() {
         require(msg.sender == owner);
@@ -119,9 +119,18 @@ contract WoWInventory {
 
     // }
 
-    function buyItem(string itemName) public isCoinHolder {
+    function buyItem(string itemName,bool legendary,uint goldForItem,uint silverForItem,uint copperForItem) public isCoinHolder {
+        require(gold[msg.sender] > goldForItem);
+        if (silver[msg.sender] < silverForItem && gold[msg.sender] == 0) {
+            revert();
+        }
         
 
+
+        if (legendary) {
+            LegendaryItemBought(msg.sender,itemName);
+        }
+        itemsOwned[msg.sender] = itemName;
         BoughtItem(msg.sender,itemName);
     }
 

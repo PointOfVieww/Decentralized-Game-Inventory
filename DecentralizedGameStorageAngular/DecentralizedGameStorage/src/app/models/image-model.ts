@@ -5,4 +5,5 @@ export class Image {
     costSilver:number;
     costCopper:number;
     selected:boolean;
+    legendary:boolean;
 }
