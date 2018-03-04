@@ -11,12 +11,7 @@ contract WoWInventory {
     event SoldItem(address,string);
     event BoughtItem(address,string);
 
-    uint private oneGoldCoin = 1 ether;
-    uint private oneSilverCoin = oneGoldCoin / 100;
-    uint private oneCopperCoin = oneSilverCoin / 100;
-    
-
-    address public owner;
+    address private owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
@@ -35,13 +30,15 @@ contract WoWInventory {
     function WoWInventory() public {
         owner = msg.sender;
     }
-    function numDigits(uint number) public pure returns(uint numberOfDigits) {
+
+    function numDigits(uint number) private pure returns(uint numberOfDigits) {
         while (number > 0) {
             number /= 10;
             numberOfDigits++;
         }
         return numberOfDigits;
     }
+
     //calculate which coins to get when sent more than 1 eth
     function calculateGoldToReceive(uint value) private pure returns(uint) {
         return value / 10000;
@@ -116,6 +113,11 @@ contract WoWInventory {
             copper[addr] += _copper;
         }
     }
+    //maybe selling their coins in the future.
+    // function sellCoins() public {
+        
+
+    // }
 
     function buyItem(string itemName) public isCoinHolder {
         

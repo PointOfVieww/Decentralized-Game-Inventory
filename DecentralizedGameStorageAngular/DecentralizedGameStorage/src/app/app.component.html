@@ -1,0 +1,13 @@
+<!--The content below is only a placeholder and can be replaced.-->
+<div style="text-align:center">
+  <h1>
+    Welcome to WoW inventory!
+  </h1>
+</div>
+<div class="image-container" *ngFor="let image of images">
+  <img [src]="image.url" [ngClass]="{ selected: image.selected}" class="rounded selectable"  (click)="image.selected = !image.selected">
+  <label class = "label label-default">Name of item : {{image.nameOfItem}}</label>
+  <label class = "label label-default">Gold:{{image.costGold}} Silver:{{image.costSilver}} Copper:{{image.costCopper}}</label>
+</div>
+<button type="button" (click)="buyItem()" class="btn">Buy Item</button>
+

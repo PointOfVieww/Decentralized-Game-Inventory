@@ -1,0 +1,13 @@
+.image-container{
+    margin: 40px;
+    display: inline-block;
+}
+.selectable:hover{
+    border: 3px solid blue;
+}
+.selected{
+    border: 3px solid blue;
+}
+label{
+    display: block;
+}
