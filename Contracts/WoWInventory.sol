@@ -7,11 +7,12 @@ pragma solidity ^0.4.18;
 //10 copper = 0.001 eth
 //1 copper = 0.0001 eth
 contract WoWInventory {
-    event BoughtCoins(address,uint256);
+    event BoughtCoins(address user,uint256 value,uint256 goldReceived,uint256 silverReceived,uint256 copperReceived);
     event SoldItem(address,string);
     event BoughtItem(address,string);
     event LegendaryItemBought(address,string);
-    address private owner;
+    event InventoryCreated(address);
+    address public owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
@@ -29,6 +30,7 @@ contract WoWInventory {
 
     function WoWInventory() public {
         owner = msg.sender;
+        InventoryCreated(owner);
     }
 
     function numDigits(uint number) private pure returns(uint numberOfDigits) {
@@ -49,7 +51,7 @@ contract WoWInventory {
     function calculateCopperToReceive(uint value) private pure returns(uint) {
         return value % 100;
     }
-
+    //remove returns uint[3] after
     function buyCoins() public payable returns(uint[3]) {
         //only more than 0.0001 eth
         require(msg.value > (1 ether / 10000));
@@ -89,7 +91,7 @@ contract WoWInventory {
         gold[msg.sender] += goldToReceive;
         
         coinHolders[msg.sender] = true;
-        BoughtCoins(msg.sender,msg.value);
+        BoughtCoins(msg.sender,msg.value,goldToReceive,silverToReceive,copperToReceive);
         return res;
     }
 

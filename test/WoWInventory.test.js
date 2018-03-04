@@ -1,4 +1,5 @@
 const WoWInventory = artifacts.require("./WoWInventory.sol");
+require('truffle-test-utils').init();
 
 contract('WoWInventory',function(accounts){
     let inventoryInstance;
@@ -15,15 +16,32 @@ contract('WoWInventory',function(accounts){
             assert.strictEqual(_owner,owner,"expected owner");
         });
 
-        it("should return correct gold", async function() {
-            let arrayWithCoins = await inventoryInstance.buyCoins({value:5});
-
-            assert.Equal(arrayWithCoins[0],5,"The expected gold is not set");
-
-            // assert.Equal(arrayWithCoins[1],23,"The expected silver is not set");
-            // assert.Equal(arrayWithCoins[2],30,"The expected copper is not set");
+        it("should emit correct Event with correct values", async function() {
+            let arrayWithCoins = await inventoryInstance.buyCoins({value:11123450000000000000});
+            assert.web3Event(arrayWithCoins, {
+                event:'BoughtCoins',
+                args:{
+                    user:owner,
+                    value:11123450000000000000,
+                    goldReceived:11,
+                    silverReceived:12,
+                    copperReceived:34
+                }
+            },'Event is emitted')
         });
-
+        it("should emit correct Event with correct values test without gold", async function() {
+            let arrayWithCoins = await inventoryInstance.buyCoins({value:123450000000000000});
+            assert.web3Event(arrayWithCoins, {
+                event:'BoughtCoins',
+                args:{
+                    user:owner,
+                    value:123450000000000000,
+                    goldReceived:00,
+                    silverReceived:12,
+                    copperReceived:34
+                }
+            },'Event is emitted')
+        }); 
 
         //testing private func only when made public
         
