@@ -3,6 +3,7 @@ require('truffle-test-utils').init();
 
 contract('WoWInventory',function(accounts){
     let inventoryInstance;
+    let someItemName = "Draenor Quest Bow";
     let owner = accounts[0];
     describe("creating WoW inventory",() => {
         beforeEach(async function() {
@@ -10,12 +11,10 @@ contract('WoWInventory',function(accounts){
                 from:owner
             });
         });
-
         it("should be correct owner", async function() {
             let _owner = await inventoryInstance.owner.call();
             assert.strictEqual(_owner,owner,"expected owner");
         });
-
         it("should emit correct Event with correct values", async function() {
             let arrayWithCoins = await inventoryInstance.buyCoins({value:11123450000000000000});
             assert.web3Event(arrayWithCoins, {
@@ -42,6 +41,41 @@ contract('WoWInventory',function(accounts){
                 }
             },'Event is emitted')
         }); 
+
+        it("should correctly increment number count", async function() {
+            await inventoryInstance.buyCoins({value:11123450000000000000});
+            let numberOfItemsBeforeBuying = await inventoryInstance.getNumberOfItemsForUser(owner);
+            await inventoryInstance.buyItem(someItemName,true,1,2,3);
+            let numberOfItemsAfterBuying = await inventoryInstance.getNumberOfItemsForUser(owner);
+            assert.equal(parseInt(numberOfItemsBeforeBuying.c) + 1,parseInt(numberOfItemsAfterBuying.c),"expected number to be incremented correctly");
+        });
+
+        it("should correctly add item to user", async function() {
+            await inventoryInstance.buyCoins({value:11123450000000000000});
+            await inventoryInstance.buyItem(someItemName,true,1,2,3);
+            let numberOfItemsAfterBuying = await inventoryInstance.getNumberOfItemsForUser(owner);
+            let nameOfItem = await inventoryInstance.getItemByIndexForUser(owner,parseInt(numberOfItemsAfterBuying.c));
+            assert.strictEqual(nameOfItem,someItemName,"expected item name to be added correctly");
+        });
+        it("should check correctly if user has item",async function() {
+            await inventoryInstance.buyCoins({value:5553450000000000000});
+            await inventoryInstance.buyItem(someItemName,false,1,2,3);
+            let flag = await inventoryInstance.checkIfUserHasItem(owner,someItemName);
+            assert.equal(flag,true,'expected item to be found');
+        });
+
+        //check buy first
+
+        // it("should sell item correctly", async function() {
+        //     //5 gold 55 silver 34 copper
+        //     await inventoryInstance.buyCoins({value:5553450000000000000});
+        //     await inventoryInstance.buyItem(someItemName,false,1,2,3);
+        //     let name
+
+        //     // let numberOfItemsAfterBuying = await inventoryInstance.getNumberOfItemsForUser(owner);
+        //     // let nameOfItem = await inventoryInstance.getItemByIndexForUser(owner,parseInt(numberOfItemsAfterBuying.c));
+        //     // assert.strictEqual(nameOfItem,someItemName,"expected item name to be added correctly");
+        // });
 
         //testing private func only when made public
         

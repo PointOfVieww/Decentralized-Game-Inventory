@@ -3,6 +3,9 @@ import { Component, OnInit } from '@angular/core';
 import { default as Web3} from 'web3';
 import { default as contract } from 'truffle-contract'
 import { Image } from './models/image-model';
+import IpfsUtils from './utils/ipfs-utils';
+import { Item } from './models/items-model';
+import { IpfsService } from './services/ipfs.service';
 
 @Component({
   selector: 'app-root',
@@ -11,17 +14,17 @@ import { Image } from './models/image-model';
 })
 export class AppComponent implements OnInit {
   images:Image[]
-  itemsOfPerson:string[] = [];
-
+  itemsOfPerson:Array<Item> = [];
+  ipfsKeyFromContract:string;
+  temporaryItems:Item[] = [];
   public accounts: any[] = [];
   public account: any;
   public account_balance: number;
   private web3: any;
 
-  private _tokenContract: any;
-  private _tokenContractAddress: string = "0xbc84f3bf7dd607a37f9e5848a6333e6c188d926c";
+ constructor(private ipfsService:IpfsService) {}
   
-  async ngOnInit() {
+  ngOnInit() {
     this.images =[
       { legendary:true, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Artifact WindRunner Bow" ,url:"../assets/images/inv_bow_1h_artifactwindrunner_d_02.jpg",selected:false},
       { legendary:false, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Draenor Dungeon Bow" ,url:"../assets/images/inv_bow_1h_draenordungeon_c_01.jpg",selected:false},
@@ -37,20 +40,92 @@ export class AppComponent implements OnInit {
       { legendary:false, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Best Bow" ,url:"../assets/images/inv_weapon_bow_16.jpg",selected:false},
       { legendary:true, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Legendary bow" ,url:"../assets/images/inv_weapon_bow_58.jpg",selected:false}
  ]
-
     this.initWeb3();
-    await this.getAccount();
+    this.getAccount();
+    
+    //get from smart contract ipfs id
+
+     this.ipfsKeyFromContract = "QmSVPRyabNTdNW2tjdqya1oCoihRLy7aWTTcGzjH6XFumr";
+    //read json of persons items
+
+    var test;
+    this.getJSONFromIpfs(this.ipfsKeyFromContract);
+
+    
 
 
+     //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "Qmf8kiL6oSKUcLz9fiW8J4CPjuDduLWBqcCDrLwaFckTNh",nameOfItem:"yy"});
+     //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "QmQJA8ySaT7BL4SAq2FJFtSTwwXjE1fRWZQey3n42G8EHZ",nameOfItem:"yaerta"});
   }
 
-  buyItem(){
+  async buyItem(){
     
-    var test = this.images.filter(x=>x.selected==true);
+    var getImage = this.images.filter(x=>x.selected==true);
+    var tempFile;
+    var ipfsIDForItem;
+    var itemForUser;
+    let hasAnyItems:boolean;
 
-    console.log(test);
-    this.itemsOfPerson.push(test[0].url);
+    if(this.ipfsKeyFromContract == undefined){
+      
+
+    }
+
+    if(this.itemsOfPerson.find(x=>x.nameOfItem == getImage[0].nameOfItem)){
+      itemForUser= this.itemsOfPerson.find(x=>x.nameOfItem == getImage[0].nameOfItem);
+      
+    }
+    else{
+      //get file from current images in assets
+      await IpfsUtils.getFileFromLocalUrl(getImage[0].url,getImage[0].nameOfItem)
+      .then(result => tempFile = result)
+      .catch(err => console.error(err));
+
+      //upload it to ipfs
+      await IpfsUtils.addUserItem(tempFile).then(ipfsId => {
+        ipfsIDForItem = ipfsId;
+        console.log("ipfs id for item " +IpfsUtils.IPFS_SERVER + ipfsIDForItem);
+      });
+
+      //make an item
+      itemForUser = { 
+        url:IpfsUtils.IPFS_SERVER + ipfsIDForItem,
+        nameOfItem:getImage[0].nameOfItem
+      };
+      
+    }
+    //push object in items
+    this.itemsOfPerson.push(itemForUser);
+
+    //make the new json
+    var userJson = JSON.stringify(this.itemsOfPerson);
+
+    //after finishing json..update ipfs
+    var ipfsID;
+    var fileJSON;
+    
+    if(this.ipfsKeyFromContract == undefined){
+      fileJSON = new File(["["+userJson+"]"],"itemsOfUsers");
+    }
+    else{
+      fileJSON = new File([userJson],"itemsOfUsers");
+    }
+    IpfsUtils.addUserItem(fileJSON).then(ipfsId => {
+      ipfsID = ipfsId;
+      console.log(IpfsUtils.IPFS_SERVER + ipfsId);
+    });
+
+    //add ipfsID in smart contract to current msg.sender
+    
     this.images.forEach(x=>x.selected=false);
+  }
+  
+  public getJSONFromIpfs(ipfsPath:string){
+    return this.ipfsService.getUserItems(ipfsPath).subscribe((x:Array<Item>)=>{
+
+        this.itemsOfPerson = x;
+
+    });
   }
 
   public async buyGold(){
@@ -59,7 +134,6 @@ export class AppComponent implements OnInit {
     // console.log(this.web3.fromWei(this.web3.eth.getBalance(this.account))); 
     
   }
-  
   
   private async getAccount(): Promise<string> {
     if (this.account == null) {
@@ -80,23 +154,18 @@ export class AppComponent implements OnInit {
         })
       }) as string;
       this.web3.eth.defaultAccount = this.account;
+
       this.web3.eth.getBalance(this.account, (err, balance) => {
         this.account_balance = this.web3.fromWei(balance, "ether");
       });
     }
     return Promise.resolve(this.account);
   }
-
-
   public initWeb3() {
     // Checking if Web3 has been injected by the browser (Mist/MetaMask)
     if (typeof (window as any).web3 !== 'undefined') {
-      // Use Mist/MetaMask's provider
-      // console.log((window as any).web3);
       this.web3 = (window as any).web3;
-      // (window as any).web3 = new Web3((window as any).web3.currentProvider);
     } else {
-      // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
       (window as any).web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
     }
   }

@@ -7,17 +7,24 @@ pragma solidity ^0.4.18;
 //10 copper = 0.001 eth
 //1 copper = 0.0001 eth
 contract WoWInventory {
-    event BoughtCoins(address user,uint256 value,uint256 goldReceived,uint256 silverReceived,uint256 copperReceived);
-    event SoldItem(address,string);
-    event BoughtItem(address,string);
-    event LegendaryItemBought(address,string);
-    event InventoryCreated(address);
+    event BoughtCoins(
+        address user,
+        uint256 value,
+        uint256 goldReceived,
+        uint256 silverReceived,
+        uint256 copperReceived
+    );
+    event SoldItem(address addrOfUser,string nameOfItem);
+    event BoughtItem(address addr,string nameOfItem);
+    event LegendaryItemBought(address addrOfUser,string nameOfLegendaryItem);
+    event InventoryCreated(address addrOfUser);
     address public owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
-    mapping (address=>bool) coinHolders;
-    mapping (address=>string) itemsOwned;
+    mapping (address=>bool) public coinHolders;
+    mapping (address=>mapping (uint256=>string)) public itemsOwned;
+    mapping (address=>uint) public itemsNumberForUser;
 
     modifier isOwner() {
         require(msg.sender == owner);
@@ -91,6 +98,7 @@ contract WoWInventory {
         gold[msg.sender] += goldToReceive;
         
         coinHolders[msg.sender] = true;
+
         BoughtCoins(msg.sender,msg.value,goldToReceive,silverToReceive,copperToReceive);
         return res;
     }
@@ -115,31 +123,85 @@ contract WoWInventory {
             copper[addr] += _copper;
         }
     }
+
     //maybe selling their coins in the future.
     // function sellCoins() public {
         
 
     // }
 
-    function buyItem(string itemName,bool legendary,uint goldForItem,uint silverForItem,uint copperForItem) public isCoinHolder {
+    function buyItem(string itemName,bool legendary, uint goldForItem,uint silverForItem,uint copperForItem) public isCoinHolder {
         require(gold[msg.sender] > goldForItem);
-        if (silver[msg.sender] < silverForItem && gold[msg.sender] == 0) {
+        require(itemsNumberForUser[msg.sender] < 100);
+        require(!checkIfStringIsEmpty(itemName));
+        if (silver[msg.sender] < silverForItem && gold[msg.sender] < 1) {
+            revert();
+        }
+        if (copper[msg.sender] < copperForItem && silver[msg.sender] < 1 && gold[msg.sender] < 1) {
             revert();
         }
         
+        
+
 
 
         if (legendary) {
             LegendaryItemBought(msg.sender,itemName);
         }
-        itemsOwned[msg.sender] = itemName;
+        itemsNumberForUser[msg.sender] += 1;
+        itemsOwned[msg.sender][itemsNumberForUser[msg.sender]] = itemName;
         BoughtItem(msg.sender,itemName);
     }
 
-    function sellItem(string itemName) public {
-        
+    function checkIfStringIsEmpty(string name) private pure returns(bool) {
+        bytes memory temp = bytes(name);
+        if (temp.length == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
+    function sellItem(string itemName,uint goldForItem,uint silverForItem,uint copperForItem) public {
+        require(checkIfStringIsEmpty(itemName));
+        if (!checkIfUserHasItem(msg.sender,itemName)) {
+            revert();
+        }
+
+        if (copper[msg.sender] + copperForItem < 100) {
+            copper[msg.sender] += copperForItem;
+        } else {
+            copper[msg.sender] = copper[msg.sender] + copperForItem - 100;
+            silverForItem++;
+        }
+
+        if (silver[msg.sender] + silverForItem < 100) {
+            silver[msg.sender] += silverForItem;
+        } else {
+            silver[msg.sender] = silver[msg.sender] + silverForItem - 100;
+            goldForItem++;
+        }
+
+        gold[msg.sender] += goldForItem;
         SoldItem(msg.sender,itemName);
+    }
+
+    function checkIfUserHasItem(address addr,string itemName) public view returns(bool) {
+        uint numberOfItems = getNumberOfItemsForUser(addr);
+        for (uint i = 0; i <= numberOfItems;i++) {
+            if (keccak256(getItemByIndexForUser(addr,i)) == keccak256(itemName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getNumberOfItemsForUser(address addr) public view returns(uint) {
+        return itemsNumberForUser[addr];
+    }
+
+    function getItemByIndexForUser(address addr,uint index) public view returns(string) {
+        return itemsOwned[addr][index];
     }
 
     function getGoldCoinsForAddress(address addr) public view returns(uint256) {

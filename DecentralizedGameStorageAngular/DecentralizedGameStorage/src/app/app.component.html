@@ -17,9 +17,9 @@
 </div>
 <button type="button" (click)="buyItem()" class="btn">Buy Item</button>
 
-<div class="inventory">
+<div class="inventory" *ngIf="itemsOfPerson != undefined">
   <div class="image-container-second" *ngFor="let item of itemsOfPerson">
-      <img [src]="item" class="rounded selectable" >
+      <img [src]="item.url" class="rounded selectable" >
   <!-- show items of person taken from IPFS or just recently bought -->
   </div>
 </div>
