@@ -1,11 +1,22 @@
 pragma solidity ^0.4.18;
 
-//1 gold = 1 eth
-//100 silver = 1 gold = 1 eth
-//10 silver = 0.1 eth
-//1 silver = 0.01 eth = 100 copper
-//10 copper = 0.001 eth
-//1 copper = 0.0001 eth
+/**
+    @notice This contract implements a simple decentralized game inventory.
+    Every user has its own inventory.
+    @title Decentralized Game Storage
+    @author Pavel Dochev
+*/
+
+/**
+    1 gold = 1 eth
+    100 silver = 1 gold = 1 eth
+    10 silver = 0.1 eth
+    1 silver = 0.01 eth = 100 copper
+    10 copper = 0.001 eth
+    1 copper = 0.0001 eth
+ */
+
+
 contract WoWInventory {
     event BoughtCoins(
         address user,
@@ -18,6 +29,7 @@ contract WoWInventory {
     event BoughtItem(address addr,string nameOfItem);
     event LegendaryItemBought(address addrOfUser,string nameOfLegendaryItem);
     event InventoryCreated(address addrOfUser);
+
     address public owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
@@ -124,26 +136,49 @@ contract WoWInventory {
         }
     }
 
-    //maybe selling their coins in the future.
-    // function sellCoins() public {
-        
-
-    // }
+    function atleastOnePositiveCoin() public view isCoinHolder returns(bool) {
+        if (gold[msg.sender] > 0 || silver[msg.sender] > 0 || copper[msg.sender] > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 
     function buyItem(string itemName,bool legendary, uint goldForItem,uint silverForItem,uint copperForItem) public isCoinHolder {
         require(gold[msg.sender] > goldForItem);
+        require(atleastOnePositiveCoin());
         require(itemsNumberForUser[msg.sender] < 100);
         require(!checkIfStringIsEmpty(itemName));
+
         if (silver[msg.sender] < silverForItem && gold[msg.sender] < 1) {
             revert();
         }
         if (copper[msg.sender] < copperForItem && silver[msg.sender] < 1 && gold[msg.sender] < 1) {
             revert();
         }
-        
-        
 
+        if (copper[msg.sender] < copperForItem) {
+            if (silver[msg.sender] < 0) {
+                revert();
+            }
+            silver[msg.sender]--;
+            copper[msg.sender] = copper[msg.sender] + 100 - copperForItem;
+        } else {
+            copper[msg.sender] -= copperForItem;
+        }
 
+        if (silver[msg.sender] < silverForItem) {
+            if (gold[msg.sender] < 1) {
+                revert();
+            }
+            gold[msg.sender]--;
+            silver[msg.sender] = silver[msg.sender] + 100 - silverForItem;
+            
+        } else {
+            silver[msg.sender] -= silverForItem;
+        }
+
+        gold[msg.sender] -= goldForItem;
 
         if (legendary) {
             LegendaryItemBought(msg.sender,itemName);
@@ -161,7 +196,7 @@ contract WoWInventory {
             return false;
         }
     }
-
+    //todo check sell item method and its checkIfStringIsEmpty method(never tried that way)
     function sellItem(string itemName,uint goldForItem,uint silverForItem,uint copperForItem) public {
         require(checkIfStringIsEmpty(itemName));
         if (!checkIfUserHasItem(msg.sender,itemName)) {
@@ -182,6 +217,8 @@ contract WoWInventory {
             goldForItem++;
         }
 
+        itemsNumberForUser[msg.sender] -= 1;
+        // delete itemsOwned[msg.sender][1];
         gold[msg.sender] += goldForItem;
         SoldItem(msg.sender,itemName);
     }

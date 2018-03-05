@@ -64,7 +64,41 @@ contract('WoWInventory',function(accounts){
             assert.equal(flag,true,'expected item to be found');
         });
 
-        //check buy first
+        it("should calculate correclty the money for the buy",async function() {
+            await inventoryInstance.buyCoins({value:5553450000000000000});
+            await inventoryInstance.buyItem(someItemName,false,1,2,3);
+            let goldAfterBuying = await inventoryInstance.getGoldCoinsForAddress(owner);
+            let silverAfterBuying = await inventoryInstance.getSilverCoinsForAddress(owner);
+            let copperAfterBuying = await inventoryInstance.getCopperCoinsForAddress(owner);
+
+            assert.equal(parseInt(goldAfterBuying.c),4,'expected gold to be correct');
+            assert.equal(parseInt(silverAfterBuying.c),53,'expected silver to be correct');
+            assert.equal(parseInt(copperAfterBuying.c),31,'expected copper to be correct');
+        });
+
+        it("should calculate correclty the money for the buy",async function() {
+            await inventoryInstance.buyCoins({value:5553450000000000000});
+            await inventoryInstance.buyItem(someItemName,false,1,9,35);
+            let goldAfterBuying = await inventoryInstance.getGoldCoinsForAddress(owner);
+            let silverAfterBuying = await inventoryInstance.getSilverCoinsForAddress(owner);
+            let copperAfterBuying = await inventoryInstance.getCopperCoinsForAddress(owner);
+
+            assert.equal(parseInt(goldAfterBuying.c),4,'expected gold to be correct');
+            assert.equal(parseInt(silverAfterBuying.c),45,'expected silver to be correct');
+            assert.equal(parseInt(copperAfterBuying.c),99,'expected copper to be correct');
+        });
+
+        it("should calculate correclty the money for the buy",async function() {
+            await inventoryInstance.buyCoins({value:5553450000000000000});
+            await inventoryInstance.buyItem(someItemName,false,2,60,3);
+            let goldAfterBuying = await inventoryInstance.getGoldCoinsForAddress(owner);
+            let silverAfterBuying = await inventoryInstance.getSilverCoinsForAddress(owner);
+            let copperAfterBuying = await inventoryInstance.getCopperCoinsForAddress(owner);
+
+            assert.equal(parseInt(goldAfterBuying.c),2,'expected gold to be correct');
+            assert.equal(parseInt(silverAfterBuying.c),95,'expected silver to be correct');
+            assert.equal(parseInt(copperAfterBuying.c),31,'expected copper to be correct');
+        });
 
         // it("should sell item correctly", async function() {
         //     //5 gold 55 silver 34 copper
