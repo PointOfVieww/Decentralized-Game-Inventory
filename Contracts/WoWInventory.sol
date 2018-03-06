@@ -38,6 +38,9 @@ contract WoWInventory {
     mapping (address=>mapping (uint256=>string)) public itemsOwned;
     mapping (address=>uint) public itemsNumberForUser;
 
+    //should i let others read the hashes of users ?
+    mapping (address=>string) hashIpfsUser;
+
     modifier isOwner() {
         require(msg.sender == owner);
         _;
@@ -115,7 +118,13 @@ contract WoWInventory {
         return res;
     }
 
-    function checkIfCoinsGoOverLimit(address addr,uint _silver,uint _copper) internal {
+    function checkIfCoinsGoOverLimit(
+        address addr,
+        uint _silver,
+        uint _copper
+    ) 
+        internal 
+    {
         uint256 currSilver = silver[addr];
         uint currCopper = copper[addr];
         uint temp = 0;
@@ -144,7 +153,20 @@ contract WoWInventory {
         }
     }
 
-    function buyItem(string itemName,bool legendary, uint goldForItem,uint silverForItem,uint copperForItem) public isCoinHolder {
+    function buyItem(
+        string itemName,
+        bool legendary,
+        uint goldForItem,
+        uint silverForItem,
+        uint copperForItem,
+        string ipfsHash
+    )
+        public
+        isCoinHolder 
+    {
+
+        require(silverForItem < 100);
+        require(copperForItem < 100);
         require(gold[msg.sender] > goldForItem);
         require(atleastOnePositiveCoin());
         require(itemsNumberForUser[msg.sender] < 100);
@@ -183,22 +205,34 @@ contract WoWInventory {
         if (legendary) {
             LegendaryItemBought(msg.sender,itemName);
         }
+        hashIpfsUser[msg.sender] = ipfsHash;
         itemsNumberForUser[msg.sender] += 1;
         itemsOwned[msg.sender][itemsNumberForUser[msg.sender]] = itemName;
         BoughtItem(msg.sender,itemName);
     }
 
-    function checkIfStringIsEmpty(string name) private pure returns(bool) {
-        bytes memory temp = bytes(name);
-        if (temp.length == 0) {
+    function checkIfStringIsEmpty(string name) public pure returns(bool) {
+        string memory temp = "";
+        if (keccak256(name) == keccak256(temp)) {
             return true;
         } else {
             return false;
         }
     }
-    //todo check sell item method and its checkIfStringIsEmpty method(never tried that way)
-    function sellItem(string itemName,uint goldForItem,uint silverForItem,uint copperForItem) public {
-        require(checkIfStringIsEmpty(itemName));
+    function sellItem(
+        string itemName,
+        uint goldForItem,
+        uint silverForItem,
+        uint copperForItem,
+        string ipfsHash
+    )
+        public 
+    {
+        require(silverForItem < 100);
+        require(copperForItem < 100);
+        if (checkIfStringIsEmpty(itemName)) {
+            revert();
+        }
         if (!checkIfUserHasItem(msg.sender,itemName)) {
             revert();
         }
@@ -217,9 +251,12 @@ contract WoWInventory {
             goldForItem++;
         }
 
-        itemsNumberForUser[msg.sender] -= 1;
-        // delete itemsOwned[msg.sender][1];
+
+        uint index = getIndexByItemName(msg.sender,itemName);
+        // itemsNumberForUser[msg.sender] -= 1; 
+        delete itemsOwned[msg.sender][index];
         gold[msg.sender] += goldForItem;
+        hashIpfsUser[msg.sender] = ipfsHash;
         SoldItem(msg.sender,itemName);
     }
 
@@ -231,6 +268,25 @@ contract WoWInventory {
             }
         }
         return false;
+    }
+
+    function getIndexByItemName(address addr,string itemName) public view returns(uint) {
+        require(!checkIfUserHasItem(addr,itemName));
+        uint numberOfItems = getNumberOfItemsForUser(addr);
+        for (uint i = 0; i <= numberOfItems;i++) {
+            if (keccak256(getItemByIndexForUser(addr,i)) == keccak256(itemName)) {
+                return i;
+            }
+        }
+    }
+
+    function getAddressBalance(address addr) public view returns(uint) {
+        require(addr != 0x0);
+        return addr.balance;
+    }
+
+    function getContractBalance()public view returns(uint) {
+        return this.balance;
     }
 
     function getNumberOfItemsForUser(address addr) public view returns(uint) {
