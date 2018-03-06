@@ -5,6 +5,7 @@ import { NgModule } from '@angular/core';
 import { AppComponent } from './app.component';
 import { IpfsService } from './services/ipfs.service';
 import { HttpClientModule } from '@angular/common/http';
+import { ContractService } from './services/contract.service';
 
 
 @NgModule({
@@ -15,7 +16,10 @@ import { HttpClientModule } from '@angular/common/http';
     BrowserModule,
     HttpClientModule,
   ],
-  providers: [IpfsService],
+  providers: [
+    IpfsService,
+    ContractService
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

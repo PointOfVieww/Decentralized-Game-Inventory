@@ -1,11 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 
-import { default as Web3} from 'web3';
-import { default as contract } from 'truffle-contract'
 import { Image } from './models/image-model';
 import IpfsUtils from './utils/ipfs-utils';
 import { Item } from './models/items-model';
 import { IpfsService } from './services/ipfs.service';
+import { ContractService } from './services/contract.service';
 
 @Component({
   selector: 'app-root',
@@ -17,14 +16,11 @@ export class AppComponent implements OnInit {
   itemsOfPerson:Array<Item> = [];
   ipfsKeyFromContract:string;
   temporaryItems:Item[] = [];
-  public accounts: any[] = [];
-  public account: any;
-  public account_balance: number;
-  private web3: any;
+  account_balance: number;
 
- constructor(private ipfsService:IpfsService) {}
+ constructor(private ipfsService:IpfsService,private contractService:ContractService) {}
   
-  ngOnInit() {
+  async ngOnInit() {
     this.images =[
       { legendary:true, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Artifact WindRunner Bow" ,url:"../assets/images/inv_bow_1h_artifactwindrunner_d_02.jpg",selected:false},
       { legendary:false, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Draenor Dungeon Bow" ,url:"../assets/images/inv_bow_1h_draenordungeon_c_01.jpg",selected:false},
@@ -39,9 +35,11 @@ export class AppComponent implements OnInit {
       { legendary:false, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Bernard Dog Pet" ,url:"../assets/images/inv_stbernarddogpet.jpg",selected:false},
       { legendary:false, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Best Bow" ,url:"../assets/images/inv_weapon_bow_16.jpg",selected:false},
       { legendary:true, costCopper: 32, costSilver:2 ,costGold:3 ,nameOfItem:"Legendary bow" ,url:"../assets/images/inv_weapon_bow_58.jpg",selected:false}
- ]
-    this.initWeb3();
-    this.getAccount();
+  ]
+    this.contractService.initWeb3();
+    await this.contractService.getAccount();
+    await this.contractService.getBalance();
+    this.account_balance = this.contractService.account_balance;
     
     //get from smart contract ipfs id
 
@@ -50,9 +48,6 @@ export class AppComponent implements OnInit {
 
     var test;
     this.getJSONFromIpfs(this.ipfsKeyFromContract);
-
-    
-
 
      //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "Qmf8kiL6oSKUcLz9fiW8J4CPjuDduLWBqcCDrLwaFckTNh",nameOfItem:"yy"});
      //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "QmQJA8ySaT7BL4SAq2FJFtSTwwXjE1fRWZQey3n42G8EHZ",nameOfItem:"yaerta"});
@@ -135,40 +130,7 @@ export class AppComponent implements OnInit {
     
   }
   
-  private async getAccount(): Promise<string> {
-    if (this.account == null) {
-      this.account = await new Promise((resolve, reject) => {
-        this.web3.eth.getAccounts((err, accs) => {
-          if (err != null) {
-            alert('There was an error fetching your accounts.');
-            return;
-          }
-          if (accs.length === 0) {
-            alert(
-              'Couldnt get any accounts! Make sure your Ethereum client is configured correctly.'
-            );
-            return;
-          }
-          resolve(accs[0]);
-          this.accounts = accs;
-        })
-      }) as string;
-      this.web3.eth.defaultAccount = this.account;
-
-      this.web3.eth.getBalance(this.account, (err, balance) => {
-        this.account_balance = this.web3.fromWei(balance, "ether");
-      });
-    }
-    return Promise.resolve(this.account);
-  }
-  public initWeb3() {
-    // Checking if Web3 has been injected by the browser (Mist/MetaMask)
-    if (typeof (window as any).web3 !== 'undefined') {
-      this.web3 = (window as any).web3;
-    } else {
-      (window as any).web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-    }
-  }
+  
 }
 
 
