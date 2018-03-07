@@ -39,8 +39,9 @@ export class AppComponent implements OnInit {
     this.contractService.initWeb3();
     await this.contractService.getAccount();
     await this.contractService.getBalance();
+    await this.contractService.setDefaultAcc();
     this.account_balance = this.contractService.account_balance;
-    
+
     //get from smart contract ipfs id
 
      this.ipfsKeyFromContract = "QmSVPRyabNTdNW2tjdqya1oCoihRLy7aWTTcGzjH6XFumr";
@@ -126,6 +127,7 @@ export class AppComponent implements OnInit {
   public async buyGold(){
     //call contract
 
+    this.contractService.buyCoins();
     // console.log(this.web3.fromWei(this.web3.eth.getBalance(this.account))); 
     
   }

@@ -39,7 +39,7 @@ contract WoWInventory {
     mapping (address=>uint) public itemsNumberForUser;
 
     //should i let others read the hashes of users ?
-    mapping (address=>string) hashIpfsUser;
+    mapping (address=>string) public hashIpfsUser;
 
     modifier isOwner() {
         require(msg.sender == owner);
