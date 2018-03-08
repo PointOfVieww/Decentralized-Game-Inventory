@@ -77,15 +77,22 @@ export class ContractService {
         } else {
             (window as any).web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
         }
-        this.contract = this.web3.eth.contract(ContractConfig.contract.abi).at("0x49bd2a34ef6559e095881d2f20a28afc759f7e006d432249e25ac7f3a9365b6f");
+        var myContract = this.web3.eth.contract(ContractConfig.contract.abi)
+        console.log(myContract);
+        this.contract = myContract.at('0xFa028Ad8D553803078af63130b059A3de1CE37Bd');
+        // let c = new this.web3.eth.Contract(ContractConfig.contract.abi, '0xFa028Ad8D553803078af63130b059A3de1CE37Bd');
+        console.log(contract);
+        // console.log(c);
+        console.log(this.web3.eth.accounts[0]);
+        // console.log(this.contract.buyCoins({from:this.web3.eth.accounts[0]}));
     }
 
     public async buyCoins() {
-        try {
-            await this.contract.buyCoins({from:"A5Ec3Fcb8BF5Df0AA026e91D51bD6e48F33c0A65"});
-            
-        } catch (error) {
-           console.error(error); 
-        }
+        this.contract.buyCoins(function(error, result){
+            if(!error)
+                console.log(result)
+            else
+                console.error(error);
+        });
     }
 }

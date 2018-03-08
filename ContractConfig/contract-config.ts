@@ -180,7 +180,7 @@ export const ContractConfig = {
                 "type": "event"
             },
             {
-                "constant": true,
+                "constant": false,
                 "inputs": [],
                 "name": "buyCoins",
                 "outputs": [
