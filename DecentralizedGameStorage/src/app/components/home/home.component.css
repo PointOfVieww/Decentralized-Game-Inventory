@@ -1,0 +1,35 @@
+.image-container{
+    margin: 30px;
+    display: inline-block;
+}
+.selectable:hover{
+    box-shadow: 0 0 0 3px blue;
+    cursor: pointer;
+}
+.selected{
+    box-shadow: 0 0 0 3px blue;
+}
+label{
+    display: block;
+}
+.inventory{
+    border: 3px solid blue;
+    width: 600px;
+    height: 200px;
+    display: inline-block;
+    margin-left: 60px;
+    margin-top: 20px;
+}
+.image-container-second{
+    margin: 10px;
+    display: inline-block;
+    align-self: center;
+}
+.wrp {
+    padding: 10px;
+    border: 2px solid transparent;
+    border-radius: 25px;
+}
+.ether-exchange-container{
+    margin: 10px;
+}

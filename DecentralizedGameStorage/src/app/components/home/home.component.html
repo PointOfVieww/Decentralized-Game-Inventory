@@ -1,0 +1,34 @@
+<div class="ether-exchange-container">
+  <h6>Gold:{{accountGold}}  Silver:{{accountSilver}} Copper:{{accountCopper}} </h6>
+  <h6>Your eth balance: {{accountBalance}} </h6>
+  <span>Input ether to exchange</span>
+  <input type="text" placeholder="ether" [(ngModel)]="inputEther" name="etherToBuyCoins">
+  <button type="button" class="btn" (click)="buyGold()">Buy Gold</button>
+
+<!--   
+  <span>Input gold to exchange</span>
+  <input type="text" placeholder="ether" [(ngModel)]="goldToSell" name="goldToSell">
+  <button type="button" class="btn" (click)="sellGold()">Sell Gold</button>
+  <span>Input silver to exchange</span>
+  <input type="text" placeholder="silver" [(ngModel)]="silverToSell" name="silverToSell">
+  <button type="button" class="btn" (click)="sellSilver()">Sell Silver</button>
+  <span>Input copper to exchange</span>
+  <input type="text" placeholder="copper" [(ngModel)]="copperToSell" name="copperToSell">
+  <button type="button" class="btn" (click)="sellCopper()">Sell Copper</button> -->
+
+</div>
+
+<div class="image-container" *ngFor="let image of images">
+  <img [src]="image.url" [ngClass]="{ selected: image.selected}" class="rounded selectable"  (click)="image.selected = !image.selected">
+  <label class = "label label-default">Name of item : {{image.nameOfItem}}</label>
+  <label class = "label label-default">Gold:{{image.costGold}} Silver:{{image.costSilver}} Copper:{{image.costCopper}}</label>
+</div>
+<button type="button" (click)="buyItem()" class="btn">Buy Item</button>
+<button type="button" (click)="sellItem()" class="btn">Sell Item</button>
+
+<div class="inventory" *ngIf="itemsOfPerson != undefined">
+  <div class="image-container-second" *ngFor="let item of itemsOfPerson">
+      <img [src]="item.url" class="rounded selectable" >
+  <!-- show items of person taken from IPFS or just recently bought -->
+  </div>
+</div>

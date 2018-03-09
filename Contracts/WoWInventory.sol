@@ -28,7 +28,7 @@ contract WoWInventory {
     event SoldItem(address addrOfUser,string nameOfItem);
     event BoughtItem(address addr,string nameOfItem);
     event LegendaryItemBought(address addrOfUser,string nameOfLegendaryItem);
-    event InventoryCreated(address addrOfUser);
+    // event InventoryCreated(address addrOfUser);
 
     address public owner;
     mapping (address=>uint256) gold;
@@ -52,10 +52,10 @@ contract WoWInventory {
 
     function WoWInventory() public {
         owner = msg.sender;
-        InventoryCreated(owner);
+        // InventoryCreated(owner);
     }
 
-    function numDigits(uint number) private pure returns(uint numberOfDigits) {
+    function numDigits(uint number) internal pure returns(uint numberOfDigits) {
         while (number > 0) {
             number /= 10;
             numberOfDigits++;
@@ -64,13 +64,13 @@ contract WoWInventory {
     }
 
     //calculate which coins to get when sent more than 1 eth
-    function calculateGoldToReceive(uint value) private pure returns(uint) {
+    function calculateGoldToReceive(uint value) internal pure returns(uint) {
         return value / 10000;
     }
-    function calculateSilverToReceive(uint value) private pure returns(uint) {
+    function calculateSilverToReceive(uint value) internal pure returns(uint) {
         return (value / 100) % 100;
     }
-    function calculateCopperToReceive(uint value) private pure returns(uint) {
+    function calculateCopperToReceive(uint value) internal pure returns(uint) {
         return value % 100;
     }
     //remove returns uint[3] after
@@ -106,6 +106,7 @@ contract WoWInventory {
         }
         checkIfCoinsGoOverLimit(msg.sender,silverToReceive,copperToReceive);
 
+        //remove res at some point
         res[0] = goldToReceive;
         res[1] = silverToReceive;
         res[2] = copperToReceive;
@@ -170,7 +171,7 @@ contract WoWInventory {
         require(gold[msg.sender] > goldForItem);
         require(atleastOnePositiveCoin());
         require(itemsNumberForUser[msg.sender] < 100);
-        require(!checkIfStringIsEmpty(itemName));
+        require(!stringIsEmpty(itemName));
 
         if (silver[msg.sender] < silverForItem && gold[msg.sender] < 1) {
             revert();
@@ -211,7 +212,7 @@ contract WoWInventory {
         BoughtItem(msg.sender,itemName);
     }
 
-    function checkIfStringIsEmpty(string name) public pure returns(bool) {
+    function stringIsEmpty(string name) public pure returns(bool) {
         string memory temp = "";
         if (keccak256(name) == keccak256(temp)) {
             return true;
@@ -230,7 +231,7 @@ contract WoWInventory {
     {
         require(silverForItem < 100);
         require(copperForItem < 100);
-        if (checkIfStringIsEmpty(itemName)) {
+        if (stringIsEmpty(itemName)) {
             revert();
         }
         if (!checkIfUserHasItem(msg.sender,itemName)) {
@@ -254,6 +255,7 @@ contract WoWInventory {
 
         uint index = getIndexByItemName(msg.sender,itemName);
         // itemsNumberForUser[msg.sender] -= 1; 
+        //todo:dont delete items..make a flag with map
         delete itemsOwned[msg.sender][index];
         gold[msg.sender] += goldForItem;
         hashIpfsUser[msg.sender] = ipfsHash;
@@ -310,6 +312,9 @@ contract WoWInventory {
     }
 
     function withdraw() public isOwner {
+        
+    }
+    function() payable {
         
     }
 }
