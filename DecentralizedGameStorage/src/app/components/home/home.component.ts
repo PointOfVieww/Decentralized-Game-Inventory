@@ -5,6 +5,13 @@ import { Image } from '../../models/image-model';
 import { Item } from '../../models/items-model';
 import IpfsUtils from '../../utils/ipfs-utils';
 
+import { default as Web3} from 'web3';
+import { default as contract } from 'truffle-contract';
+
+import { NotifierService } from 'angular-notifier';
+import { LegendaryEventModel } from '../../models/legendaryEvent-model';
+import { ItemsOwned } from '../../models/items-owned';
+
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
@@ -12,7 +19,7 @@ import IpfsUtils from '../../utils/ipfs-utils';
 })
 export class HomeComponent implements OnInit {
   images:Image[]
-  itemsOfPerson:Array<Item> = [];
+  itemsOfPerson:Array<ItemsOwned> = [];
   ipfsKeyFromContract:string;
   temporaryItems:Item[] = [];
   accountBalance: number;
@@ -20,36 +27,39 @@ export class HomeComponent implements OnInit {
   accountSilver:number;
   accountCopper:number;
   inputEther:number;
-  constructor(private ipfsService:IpfsService,private contractService:ContractService) { }
+  legEvent:LegendaryEventModel;
+
+  constructor(private ipfsService:IpfsService,
+              private contractService:ContractService,
+              private notifierService: NotifierService) { }
 
   async ngOnInit() {
+    
     await this.runComponent();
+
   }
 
   async buyItem(){
     
-    var getImage = this.images.filter(x=>x.selected==true);
-    if(getImage == undefined || getImage.length == 0){
-      alert("please select an item.");
+    var getImage = this.images.find(x=>x.selected==true);
+    if(getImage == undefined || getImage.nameOfItem == ""){
+      this.notifierService.notify("warning","Please select an item.");
       return;
     }
     var tempFile;
     var ipfsIDForItem;
     var itemForUser;
-    let hasAnyItems:boolean;
 
     if(this.ipfsKeyFromContract == undefined){
-      
 
     }
 
-    if(this.itemsOfPerson.find(x=>x.nameOfItem == getImage[0].nameOfItem)){
-      itemForUser= this.itemsOfPerson.find(x=>x.nameOfItem == getImage[0].nameOfItem);
-      
+    if(this.itemsOfPerson.find(x=>x.nameOfItem == getImage.nameOfItem)){
+      itemForUser = this.itemsOfPerson.find(x=>x.nameOfItem == getImage.nameOfItem);
     }
-    else{
+    else {
       //get file from current images in assets
-      await IpfsUtils.getFileFromLocalUrl(getImage[0].url,getImage[0].nameOfItem)
+      await IpfsUtils.getFileFromLocalUrl(getImage.url,getImage.nameOfItem)
       .then(result => tempFile = result)
       .catch(err => console.error(err));
 
@@ -62,15 +72,19 @@ export class HomeComponent implements OnInit {
       //make an item
       itemForUser = { 
         url:IpfsUtils.IPFS_SERVER + ipfsIDForItem,
-        nameOfItem:getImage[0].nameOfItem
+        nameOfItem:getImage.nameOfItem
       };
-      
     }
+    //remake all items in the temporary
+    this.itemsOfPerson.forEach(x=>{
+      this.temporaryItems.push({url:x.url,nameOfItem:x.nameOfItem});
+    })
+
     //push object in items
-    this.itemsOfPerson.push(itemForUser);
+    this.temporaryItems.push(itemForUser);
 
     //make the new json
-    var userJson = JSON.stringify(this.itemsOfPerson);
+    var userJson = JSON.stringify(this.temporaryItems);
 
     //after finishing json..update ipfs
     var ipfsID;
@@ -82,19 +96,64 @@ export class HomeComponent implements OnInit {
     else{
       fileJSON = new File([userJson],"itemsOfUsers");
     }
-    IpfsUtils.addUserItem(fileJSON).then(ipfsId => {
+    await IpfsUtils.addUserItem(fileJSON).then(ipfsId => {
       ipfsID = ipfsId;
       console.log(IpfsUtils.IPFS_SERVER + ipfsId);
     });
 
-    //add ipfsID in smart contract to current msg.sender
+    //add item in contract for user
+    this.contractService.buyItem(getImage.nameOfItem,getImage.legendary,getImage.costGold,getImage.costSilver,getImage.costCopper,ipfsID);
     
-    this.images.forEach(x=>x.selected=false);
+    this.images.forEach(x=> x.selected = false);
+  }
+
+
+  async sellItem() {
+    var getImage = this.itemsOfPerson.find(x=>x.selected==true);
+    if(getImage == undefined || getImage.nameOfItem == ""){
+      this.notifierService.notify("warning","Please select an item.");
+      return;
+    }
+    var itemToDelete;
+    itemToDelete = this.images.find(x=>x.nameOfItem == getImage.nameOfItem);
+    if(itemToDelete == undefined){
+      this.notifierService.notify("error","Problem occured.You are trying to sell an item you don't have.");
+      return;
+    }
+    this.itemsOfPerson = this.itemsOfPerson.filter(x=> x != getImage);
+
+    this.itemsOfPerson.forEach(x=> 
+      this.temporaryItems.push({
+          url:x.url,
+          nameOfItem:x.nameOfItem
+      }));
+
+    var fileJSON;
+    var ipfsID;
+
+    //make json after deleting everything
+    var userJson = JSON.stringify(this.temporaryItems);
+
+    if(this.ipfsKeyFromContract == undefined){
+      fileJSON = new File(["["+userJson+"]"],"itemsOfUsers");
+    }
+    else{
+      fileJSON = new File([userJson],"itemsOfUsers");
+    }
+    await IpfsUtils.addUserItem(fileJSON).then(ipfsId => {
+      ipfsID = ipfsId;
+      console.log(IpfsUtils.IPFS_SERVER + ipfsId);
+    });
+
+    this.contractService.sellItem(getImage.nameOfItem,itemToDelete.costGold,itemToDelete.costSilver,itemToDelete.costCopper,ipfsID);
+
+    this.itemsOfPerson.forEach(x=> x.selected = false);
   }
 
   public async buyGold(){
+    
     if(this.inputEther==0 || this.inputEther==undefined){
-      alert("ether to exchange should be positive");
+      this.notifierService.notify('error','ether to exchange should be positive');
       return;
     }
     //call contract
@@ -104,13 +163,13 @@ export class HomeComponent implements OnInit {
   }
   
   public getJSONFromIpfs(ipfsPath:string){
-    return this.ipfsService.getUserItems(ipfsPath).subscribe((x:Array<Item>)=>{
+    return this.ipfsService.getUserItems(ipfsPath).subscribe((x:Array<ItemsOwned>)=>{
         this.itemsOfPerson = x;
     });
   }
 
   private async runComponent(){
-    //since blizzard has too many restrictions on API and wants money most of the time... so...downoaded some items locally
+    //since blizzard has too many restrictions on API and wants money most of the time... so...downloaded some items locally
     this.images =[
       { legendary:true, costCopper: 32, costSilver:22 ,costGold:8 ,nameOfItem:"Artifact WindRunner Bow" ,url:"../../assets/images/inv_bow_1h_artifactwindrunner_d_02.jpg",selected:false},
       { legendary:false, costCopper: 46, costSilver:25 ,costGold:0 ,nameOfItem:"Draenor Dungeon Bow" ,url:"../../assets/images/inv_bow_1h_draenordungeon_c_01.jpg",selected:false},
@@ -132,21 +191,22 @@ export class HomeComponent implements OnInit {
     await this.contractService.setDefaultAcc();
     this.accountBalance = this.contractService.account_balance;
 
-    await this.contractService.getGoldCoinsForAddress().then(x=> this.accountGold = x);
-    await this.contractService.getSilverCoinsForAddress().then(x=> this.accountSilver = x);
-    await this.contractService.getCopperCoinsForAddress().then(x=> this.accountCopper = x);
-    
-    //get from smart contract ipfs id
+    await this.contractService.getCoinsForAddress().then(x=> {
+      this.accountGold = x[0];
+      this.accountSilver = x[1];
+      this.accountCopper = x[2];
+    });
 
-    this.ipfsKeyFromContract = "QmSVPRyabNTdNW2tjdqya1oCoihRLy7aWTTcGzjH6XFumr";
+    //get ipfs hash from contract
+    await this.contractService.getIpfsHashForUser().then(x=> this.ipfsKeyFromContract = x);
+
     //read json of persons items
+    if(this.ipfsKeyFromContract == undefined || this.ipfsKeyFromContract == ""){
+      this.notifierService.notify("info","No items in account");
+      return;
+    }
 
-    var test;
     this.getJSONFromIpfs(this.ipfsKeyFromContract);
 
-     //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "Qmf8kiL6oSKUcLz9fiW8J4CPjuDduLWBqcCDrLwaFckTNh",nameOfItem:"yy"});
-     //this.itemsOfPerson.push({url:IpfsUtils.IPFS_SERVER + "QmQJA8ySaT7BL4SAq2FJFtSTwwXjE1fRWZQey3n42G8EHZ",nameOfItem:"yaerta"});
-
   }
-
 }

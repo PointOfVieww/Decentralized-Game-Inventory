@@ -20,7 +20,9 @@
       "prefix": "app",
       "styles": [
         "styles.css",
-        "../node_modules/bootstrap/dist/css/bootstrap.min.css"
+        "../node_modules/bootstrap/dist/css/bootstrap.min.css",
+        "../node_modules/angular-notifier/styles.css"
+        
       ],
       "scripts": [
         "../node_modules/jquery/dist/jquery.min.js",

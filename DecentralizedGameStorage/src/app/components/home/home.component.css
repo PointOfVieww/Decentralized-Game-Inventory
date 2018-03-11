@@ -17,7 +17,7 @@ label{
     width: 600px;
     height: 200px;
     display: inline-block;
-    margin-left: 60px;
+    margin-left: 30px;
     margin-top: 20px;
 }
 .image-container-second{
@@ -31,5 +31,29 @@ label{
     border-radius: 25px;
 }
 .ether-exchange-container{
+    margin: 25px;
+}
+.card{
+    height: 150px;
+    width: 340px;
     margin: 10px;
+}
+.col-md-3{
+    max-width: 18%;
+    margin-bottom:-30px;
+}
+.btn{
+    align-self: center;
+}
+.row{
+    margin-right: 0px;
+    margin-left: 0px;
+}
+
+.item-buttons{
+    display: inline-block;
+    width: 300px;
+}
+h5{
+    margin-left:30px;
 }

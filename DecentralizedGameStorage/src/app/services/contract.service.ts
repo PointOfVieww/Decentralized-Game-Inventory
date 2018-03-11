@@ -2,7 +2,8 @@ import { Injectable } from "@angular/core";
 import { default as Web3} from 'web3';
 import { default as contract } from 'truffle-contract';
 
-import { ContractConfig } from '../../../../ContractConfig/contract-config';
+import { LegendaryEventModel } from "../models/legendaryEvent-model";
+import { ContractConfig } from "../../ContractConfig/contract-config";
 
 @Injectable()
 export class ContractService {
@@ -11,8 +12,10 @@ export class ContractService {
     public account_balance: number;
     private web3: any;
     private contract;
+    private legEvent:LegendaryEventModel;
 
     constructor() {
+        
      }
 
     public async getAccount() {
@@ -68,26 +71,22 @@ export class ContractService {
         return Promise.resolve(this.account_balance);
     }
     public initWeb3() {
-        // Checking if Web3 has been injected by the browser (Mist/MetaMask)
-        if (typeof (window as any).web3 !== 'undefined') {
-            this.web3 = (window as any).web3;
-        } else {
-            (window as any).web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
-        }
-        var myContract = this.web3.eth.contract(ContractConfig.contract.abi)
-        console.log(myContract);
-        this.contract = myContract.at(ContractConfig.contract.address);
-        // let c = new this.web3.eth.Contract(ContractConfig.contract.abi, '0xFa028Ad8D553803078af63130b059A3de1CE37Bd');
-        console.log(contract);
+    // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+    if (typeof (window as any).web3 !== 'undefined') {
+        this.web3 = (window as any).web3;
+      } else {
+          console.log("No metamask in place,pleace consider installing one");
+        //   (window as any).web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+      }
+      var myContract = this.web3.eth.contract(ContractConfig.contract.abi)
+      this.contract = myContract.at(ContractConfig.contract.address);
+      // let c = new this.web3.eth.Contract(ContractConfig.contract.abi, '0xFa028Ad8D553803078af63130b059A3de1CE37Bd')
+      this.watchContractEvents();
     }
-
-    //TODO: remove console.logs and display properly
 
     public async buyCoins(ether:number) {
         this.contract.buyCoins({value:this.web3.toWei(ether,'ether')},function(error, result){
-            if(!error)
-                console.log(result)
-            else
+            if(error)
                 console.error(error);
         });
 
@@ -98,10 +97,8 @@ export class ContractService {
 
     public async buyItem(itemName:string,legendary:boolean,_goldForItem:number,_silverForItem:number,_copperForItem:number,ipfsHash:string){
 
-        await this.contract.buyItem(itemName,legendary,_goldForItem,_silverForItem,_copperForItem,ipfsHash,function(error,result){
-            if(!error)
-                console.log(result);
-            else
+        this.contract.buyItem(itemName,legendary,_goldForItem,_silverForItem,_copperForItem,ipfsHash,function(error,result){
+            if(error)
                 console.error(error);
         });
 
@@ -110,62 +107,67 @@ export class ContractService {
     }
 
     public async sellItem(itemName:string,_goldForItem:number,_silverForItem:number,_copperForItem:number,ipfsHash:string){
-
         await this.contract.sellItem(itemName,_goldForItem,_silverForItem,_copperForItem,ipfsHash,function(error,result){
-            if(!error)
-                console.log(result);
-            else
+            if(error)
                 console.log(error);
         })
+
+        //refresh coins balance for user after sell
         await this.refreshCoins();
     }
 
     public async getIpfsHashForUser(){
-        await this.contract.hashIpfsUser({from:this.account},function(error,result){
-            if(!error)
-                console.log(result)
-            else
-                console.error(error);
-        });
+        return await new Promise((resolve,reject) => {
+            this.contract.getHashIpfsForUser(this.account,function(error,result){
+                if(error)
+                    alert('There was an error getting your items.');
+                else
+                    resolve(result);
+            });
+        }) as string;
     }
 
-    public async getGoldCoinsForAddress() {
+    public async getCoinsForAddress() {
         return await new Promise((resolve,reject) => {
-            this.contract.getGoldCoinsForAddress(this.account,function(error,result){
+            this.contract.getCoinsForAddress(this.account,function(error,result){
                 if(error != null){
-                    alert('There was an error getting your gold balance.');
+                    alert('There was an error getting your coins balance.');
                     return;
                 }
                 resolve(result);
             });
-         }) as number;
-    }
-    public async getSilverCoinsForAddress() {
-        return await new Promise((resolve,reject) => {
-            this.contract.getSilverCoinsForAddress(this.account,function(error,result){
-                if(error != null){
-                    alert('There was an error getting your silver balance.');
-                    return;
-                }
-                resolve(result);
-            });
-        }) as number;
-    }
-    public async getCopperCoinsForAddress() {
-        return await new Promise((resolve,reject) => {
-             this.contract.getCopperCoinsForAddress(this.account,function(error,result){
-                if(error != null){
-                    alert('There was an error getting your copper balance.');
-                    return;
-                }
-                resolve(result);
-             });
-        }) as number;
+        }) as number[];
     }
 
     public async refreshCoins(){
-        await this.getGoldCoinsForAddress();
-        await this.getSilverCoinsForAddress();
-        await this.getCopperCoinsForAddress();
+        await this.getCoinsForAddress();
     }
+
+  public async watchContractEvents(){
+    await this.contract.BoughtCoins().watch(function (error,result){
+        if (error)
+          alert('Error in myEvent event handler: ' + error);
+        else
+          alert(JSON.stringify(result.args));
+    })
+    this.contract.BoughtItem().watch(function (error,result){
+        if (error)
+          alert('Error in myEvent event handler: ' + error);
+        else
+          alert(JSON.stringify(result.args));
+    })
+    this.contract.SoldItem().watch(function (error,result){
+        if (error)
+          alert('Error in myEvent event handler: ' + error);
+        else
+          alert(JSON.stringify(result.args));
+    })
+    this.contract.LegendaryItemBought().watch(function (error,result){
+        if (error)
+          alert('Error in myEvent event handler: ' + error);
+        else
+        this.legEvent = JSON.parse(result.args) as LegendaryEventModel;
+          alert("User: " + this.legEvent.address + "Name of Item: "+ this.legEvent.nameOfItem);
+    })
+  }
 }

@@ -1,6 +1,7 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NotifierModule } from 'angular-notifier';
 
 import { AppComponent } from './app.component';
 import { IpfsService } from './services/ipfs.service';
@@ -17,6 +18,7 @@ import { HomeComponent } from './components/home/home.component';
   imports: [
     FormsModule,
     BrowserModule,
+    NotifierModule,
     HttpClientModule,
   ],
   providers: [

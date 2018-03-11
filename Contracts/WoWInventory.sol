@@ -16,7 +16,6 @@ pragma solidity ^0.4.18;
     1 copper = 0.0001 eth
  */
 
-
 contract WoWInventory {
     event BoughtCoins(
         address user,
@@ -28,31 +27,29 @@ contract WoWInventory {
     event SoldItem(address addrOfUser,string nameOfItem);
     event BoughtItem(address addr,string nameOfItem);
     event LegendaryItemBought(address addrOfUser,string nameOfLegendaryItem);
-    // event InventoryCreated(address addrOfUser);
 
     address public owner;
     mapping (address=>uint256) gold;
     mapping (address=>uint256) silver;
     mapping (address=>uint256) copper;
-    mapping (address=>bool) public coinHolders;
-    mapping (address=>mapping (uint256=>string)) public itemsOwned;
-    mapping (address=>uint) public itemsNumberForUser;
+    mapping (address=>mapping (uint256=>string)) private itemsOwned;
+    mapping (address=>uint) private itemsNumberForUser;
 
     //should i let others read the hashes of users ?
-    mapping (address=>string) public hashIpfsUser;
+    mapping (address=>string) private hashIpfsUser;
 
     modifier isOwner() {
         require(msg.sender == owner);
         _;
     }
+
     modifier isCoinHolder() {
-        require(coinHolders[msg.sender] == true);
+        require(atleastOnePositiveCoin());
         _;
     }
 
     function WoWInventory() public {
         owner = msg.sender;
-        // InventoryCreated(owner);
     }
 
     function numDigits(uint number) internal pure returns(uint numberOfDigits) {
@@ -73,9 +70,9 @@ contract WoWInventory {
     function calculateCopperToReceive(uint value) internal pure returns(uint) {
         return value % 100;
     }
-    //remove returns uint[3] after
-    function buyCoins() public payable returns(uint[3]) {
-        //only more than 0.0001 eth
+    
+    function buyCoins() public payable {
+        //min 0.0001 eth
         require(msg.value > (1 ether / 10000));
         //max 99.9999 ether
         require(msg.value < 100 ether);
@@ -85,7 +82,6 @@ contract WoWInventory {
         uint numOfDigits = numDigits(value);
         assert(numOfDigits <= 6);
         assert(numOfDigits >= 1);
-        uint[3] memory res;
         uint goldToReceive = 0;
         uint silverToReceive = 0;
         uint copperToReceive = 0;
@@ -104,22 +100,19 @@ contract WoWInventory {
             //Only copper
             copperToReceive = value;
         }
-        checkIfCoinsGoOverLimit(msg.sender,silverToReceive,copperToReceive);
-
-        //remove res at some point
-        res[0] = goldToReceive;
-        res[1] = silverToReceive;
-        res[2] = copperToReceive;
+        calculateCoins(msg.sender,silverToReceive,copperToReceive);
 
         gold[msg.sender] += goldToReceive;
-        
-        coinHolders[msg.sender] = true;
 
         BoughtCoins(msg.sender,msg.value,goldToReceive,silverToReceive,copperToReceive);
-        return res;
     }
 
-    function checkIfCoinsGoOverLimit(
+    // function sellCoins(uint _gold,uint _silver,uint _copper) public isCoinHolder {
+        
+    // }
+
+    //calculate and set coins even if they overflow(100)
+    function calculateCoins(
         address addr,
         uint _silver,
         uint _copper
@@ -146,12 +139,8 @@ contract WoWInventory {
         }
     }
 
-    function atleastOnePositiveCoin() public view isCoinHolder returns(bool) {
-        if (gold[msg.sender] > 0 || silver[msg.sender] > 0 || copper[msg.sender] > 0) {
-            return true;
-        } else {
-            return false;
-        }
+    function atleastOnePositiveCoin() private view returns(bool) {
+        return (gold[msg.sender] > 0 || silver[msg.sender] > 0 || copper[msg.sender] > 0);
     }
 
     function buyItem(
@@ -169,7 +158,6 @@ contract WoWInventory {
         require(silverForItem < 100);
         require(copperForItem < 100);
         require(gold[msg.sender] > goldForItem);
-        require(atleastOnePositiveCoin());
         require(itemsNumberForUser[msg.sender] < 100);
         require(!stringIsEmpty(itemName));
 
@@ -213,13 +201,9 @@ contract WoWInventory {
     }
 
     function stringIsEmpty(string name) public pure returns(bool) {
-        string memory temp = "";
-        if (keccak256(name) == keccak256(temp)) {
-            return true;
-        } else {
-            return false;
-        }
+        return keccak256(name) == keccak256("");
     }
+
     function sellItem(
         string itemName,
         uint goldForItem,
@@ -231,20 +215,19 @@ contract WoWInventory {
     {
         require(silverForItem < 100);
         require(copperForItem < 100);
-        if (stringIsEmpty(itemName)) {
-            revert();
-        }
-        if (!checkIfUserHasItem(msg.sender,itemName)) {
-            revert();
-        }
 
+        uint index = getIndexByItemName(msg.sender,itemName);
+        if (stringIsEmpty(itemsOwned[msg.sender][index])) {
+            revert();
+        }
+        //check if copper overflows
         if (copper[msg.sender] + copperForItem < 100) {
             copper[msg.sender] += copperForItem;
         } else {
             copper[msg.sender] = copper[msg.sender] + copperForItem - 100;
             silverForItem++;
         }
-
+        //check if copper overflows
         if (silver[msg.sender] + silverForItem < 100) {
             silver[msg.sender] += silverForItem;
         } else {
@@ -252,69 +235,57 @@ contract WoWInventory {
             goldForItem++;
         }
 
+        //set latest item to index that will be deleted and delete latest
+        itemsOwned[msg.sender][index] = itemsOwned[msg.sender][itemsNumberForUser[msg.sender]];
+        delete itemsOwned[msg.sender][itemsNumberForUser[msg.sender]];
 
-        uint index = getIndexByItemName(msg.sender,itemName);
-        // itemsNumberForUser[msg.sender] -= 1; 
-        //todo:dont delete items..make a flag with map
-        delete itemsOwned[msg.sender][index];
+        //counter for number 
+        itemsNumberForUser[msg.sender] -= 1;
+
         gold[msg.sender] += goldForItem;
         hashIpfsUser[msg.sender] = ipfsHash;
         SoldItem(msg.sender,itemName);
     }
 
-    function checkIfUserHasItem(address addr,string itemName) public view returns(bool) {
-        uint numberOfItems = getNumberOfItemsForUser(addr);
-        for (uint i = 0; i <= numberOfItems;i++) {
-            if (keccak256(getItemByIndexForUser(addr,i)) == keccak256(itemName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
+    //max number of items for user are 100 so max is 100 iterations 
     function getIndexByItemName(address addr,string itemName) public view returns(uint) {
-        require(!checkIfUserHasItem(addr,itemName));
-        uint numberOfItems = getNumberOfItemsForUser(addr);
+        uint numberOfItems = itemsNumberForUser[addr];
         for (uint i = 0; i <= numberOfItems;i++) {
-            if (keccak256(getItemByIndexForUser(addr,i)) == keccak256(itemName)) {
+            if (keccak256(itemsOwned[addr][i]) == keccak256(itemName)) {
                 return i;
             }
         }
     }
 
     function getAddressBalance(address addr) public view returns(uint) {
-        require(addr != 0x0);
         return addr.balance;
     }
 
-    function getContractBalance()public view returns(uint) {
+    function getContractBalance() public view returns(uint) {
         return this.balance;
+    }
+
+    function getItemByIndex(uint index) public view returns(string) {
+        return itemsOwned[msg.sender][index];
     }
 
     function getNumberOfItemsForUser(address addr) public view returns(uint) {
         return itemsNumberForUser[addr];
     }
 
-    function getItemByIndexForUser(address addr,uint index) public view returns(string) {
-        return itemsOwned[addr][index];
+    //get coins balance 
+    function getCoinsForAddress(address addr) public view returns(uint256 _gold,uint256 _silver,uint256 _copper) {
+        return (gold[addr],silver[addr],copper[addr]); 
     }
 
-    function getGoldCoinsForAddress(address addr) public view returns(uint256) {
-        return gold[addr]; 
-    }
-
-    function getSilverCoinsForAddress(address addr) public view returns(uint256) {
-        return silver[addr]; 
-    }
-
-    function getCopperCoinsForAddress(address addr) public view returns(uint256) {
-        return copper[addr]; 
+    function getHashIpfsForUser(address addr) public view returns(string ipfsHash) {
+        return hashIpfsUser[addr];
     }
 
     function withdraw() public isOwner {
-        
+        owner.transfer(this.balance);
     }
-    function() payable {
+    // function() payable {
         
-    }
+    // }
 }
